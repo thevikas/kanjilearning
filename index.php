@@ -4,17 +4,30 @@ require_once("db.php");
 $word = clsWord::getNextWord();
 
 #load lowest id kanji
-$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
-$rs = $r->fetch_array();
+#$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
+#$rs = $r->fetch_array();
 
-$qt=2;
+#print_r($word);
+
+
+$qt=1;
+
+if($word->percentage>=80 && $word->correct>5)
+    $qt=2;
 
 if($qt==1)
     $means = clsWord::getRandomWords($word->means);
 
 
 require_once("header.php");
-$r = doqueryi("select * from stats");
+$r = doqueryi("select v from sensex order by dated desc limit 0,5");
+?><br/><?
+while($rs = $r->fetch_object())
+{
+    echo "{$rs->v},";
+}
+?><br/><?
+$r = doqueryi("select *,100*correct/shown as `percent` from stats");
 ?>
 <table border=1 align=right class="rep">
 <?
@@ -63,7 +76,17 @@ while($rs = $r->fetch_array())
 }
 ?>
 </table>
-Last Answer: <? if(isset($_GET['last']) && $_GET['last']==1) echo "Correct"; ?>
+Last Answer: <? 
+    if(isset($_GET['last']) )
+    {
+        if($_GET['last']==1) 
+            echo "Correct"; 
+        else
+        {
+            ?><font color=red>Wrong</font><?
+        }
+    }
+?>
 <form method="post" action="check.php">
 <input type="hidden" name="id" value="<?=$word->id?>"/>
 <p class="w">
@@ -113,7 +136,8 @@ if($qt==1)
 <input type="submit"/>
 </p>
 </form>
-<script>
+<script type="text/javascript">
+<? if($qt==1) { ?>
 function kp(e,o)
 {
     frm = o.form;
@@ -123,7 +147,7 @@ function kp(e,o)
         {
             for(i=0; i<6; i++)
             {
-                if(frm.ans[i].value == '<?=$means[0]?>')
+                if(frm.ans[i].value == "<?=$means[0]?>")
                 {
                     frm.ans[i].checked=true;
                     frm.ans[i].className += " correct";
@@ -137,6 +161,7 @@ function kp(e,o)
             frm.ans[ndx].checked=true;
     }
 }
+<? } ?>
 document.getElementById('focusme').focus();
 </script>
 <?

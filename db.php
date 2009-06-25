@@ -38,5 +38,19 @@ function doqueryi($sql,$ln=0,$die_on_error=1,$dbh=0)
 	return $result;
 }
 
+function cleanvarg($varname,$def="")
+{
+    if(isset($_GET[$varname]))
+        return $_GET[$varname];
+    return $def;
+}
+
+function cleanvarp($varname,$def="")
+{
+    if(isset($_POST[$varname]))
+        return $_POST[$varname];
+    return $def;
+}
+
 require_once("clsWord.php");
 ?>

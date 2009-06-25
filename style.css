@@ -17,3 +17,11 @@ input.correct
     float:left;
     padding: 10px;
 }
+table.rep
+{
+    font-size: .35em;
+}
+tr.current
+{
+    font-weight: bold;
+}

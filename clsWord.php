@@ -10,7 +10,7 @@ class clsWord
     {
         global $myi;
         $r = doqueryi("select id from vocab v
-                left join stats s on s.kanji_id=v.id
+                left join stats s on s.kanji_id=v.id  where v.chapter in (1,2,3)
             order by coalesce(countdown,0),id");
         $rs = $r->fetch_array();
         $word = new clsWord();
@@ -56,7 +56,10 @@ class clsWord
             $this->wrong = 0 + $rs['wrong'];
             $this->difference = 0 + $rs['difference'];
             $this->countdown = 0 + $rs['countdown'];
-            
+            $this->percentage = 0;
+            if($this->shown>0)
+                $this->percentage = round(100*$this->correct/$this->shown);
+    
             return true;
         }
         die("not found clsword:$id");
