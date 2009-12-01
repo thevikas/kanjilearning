@@ -38,12 +38,16 @@ if($corrects)
     echo "<br/>correct";
     $corrects = 1;
     $jump = 2;
+
     if($word->correct>3 && $word->percentage==100)
         $jump = 20;
+
     if($word->correct>15)
         $jump+=5;
+
     if($word->correct>20)
         $jump+=10;
+
     if($word->correct>30)
         $jump+=15;
 

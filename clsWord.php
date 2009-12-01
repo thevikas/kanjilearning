@@ -51,12 +51,12 @@ class clsWord
             $this->means = $rs['means'];
             $this->word = $rs['word'];
 
-            $this->shown = 0 + $rs['shown'];
-            $this->correct = 0 + $rs['correct'];
-            $this->wrong = 0 + $rs['wrong'];
-            $this->difference = 0 + $rs['difference'];
-            $this->countdown = 0 + $rs['countdown'];
-            $this->percentage = 0;
+            $this->shown = 0 + $rs['shown']; #how many times shown
+            $this->correct = 0 + $rs['correct']; #how many times correctly answered
+            $this->wrong = 0 + $rs['wrong']; #wrongly answered
+            $this->difference = 0 + $rs['difference']; #the current jump difference
+            $this->countdown = 0 + $rs['countdown']; #the countdown, counted after every attempt of any word
+            $this->percentage = 0; #calculated percentage of correct answers
             if($this->shown>0)
                 $this->percentage = round(100*$this->correct/$this->shown);
     

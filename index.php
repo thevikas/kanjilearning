@@ -147,6 +147,7 @@ function kp(e,o)
         {
             for(i=0; i<6; i++)
             {
+		frm.ans[i].disabled=true;
                 if(frm.ans[i].value == "<?=$means[0]?>")
                 {
                     frm.ans[i].checked=true;
