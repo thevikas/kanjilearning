@@ -1,14 +1,17 @@
 <?php
 require_once("db.php");
+global $debugprinting;
+$debugprinting=1;
 
 $word = clsWord::getNextWord();
 
 #load lowest id kanji
 #$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
 #$rs = $r->fetch_array();
-
-#print_r($word);
-
+echo "<!-- ";
+if($debugprinting)
+    print_r($word);
+echo "-->";
 
 $qt=1;
 
@@ -20,16 +23,30 @@ if($qt==1)
 
 
 require_once("header.php");
-$r = doqueryi("select v from sensex order by dated desc limit 0,5");
-?><br/><?
+$r = doqueryi("select v from sensex order by dated desc limit 0,1");
+?><br/><sub><?
 while($rs = $r->fetch_object())
 {
-    echo "{$rs->v},";
+    echo "{$rs->v}";
 }
-?><br/><?
+?></sub><br/>
+<?
 $r = doqueryi("select *,100*correct/shown as `percent` from stats");
+
+$level = 13;
 ?>
 <table border=1 align=right class="rep">
+<tr>
+<td colspan="10">
+Queue Size for Level <?=$level?> is <big><strong><?=clsWord::getQueueStats($level)?></strong></big>
+
+<?=clsWord::getQueueStats(4)?>,
+<?=clsWord::getQueueStats(3)?>,
+<?=clsWord::getQueueStats(2)?>,
+<?=clsWord::getQueueStats(1)?>,
+<?=clsWord::getQueueStats(0)?>
+</td>
+</tr>
 <?
 $rc=0;
 while($rs = $r->fetch_array())
@@ -56,6 +73,8 @@ while($rs = $r->fetch_array())
         $cls = "";
         if($rs['kanji_id'] == $word->id)
             $cls = "current";
+        else if($rs['kanji_id'] == cleanvarg("oldid",0))
+            $cls = "before";
         ?>
         <tr class="<?=$cls?>">
         <?
@@ -76,7 +95,7 @@ while($rs = $r->fetch_array())
 }
 ?>
 </table>
-Last Answer: <? 
+<label title="<?=$_GET['means']?>">Last Answer: <? 
     if(isset($_GET['last']) )
     {
         if($_GET['last']==1) 
@@ -86,14 +105,21 @@ Last Answer: <?
             ?><font color=red>Wrong</font><?
         }
     }
-?>
+
+$cls = "";
+if($word->shown==0)
+    $cls = " class=\"new\" ";
+
+?></label/>
+
 <form method="post" action="check.php">
 <input type="hidden" name="id" value="<?=$word->id?>"/>
 <p class="w">
 <label>Word</label>
-<strong>
+<strong <?=$cls?>>
 <?=$word->word?>
 </strong>
+<sub><small><?=$word->difference?>,<?=$word->wrong?></small></sub>
 </p>
 <p class="m">
 <label for="focusme">
@@ -126,12 +152,12 @@ if($qt==1)
         $ri++;
     }
     ?>
-    <input type="text" value="" id="focusme" onkeypress="return kp(event,this)"/>
+    <input type="text" value="" autocomplete="off" id="focusme" onkeypress="return kp(event,this)"/>
     <?
 }
 ?>
 <input type="hidden" name="qt" value="<?=$qt?>"/>
-<? if($qt==2) { ?><input id="focusme" type="text" name="meanslike"/> <? } ?>
+<? if($qt==2) { ?><input autocomplete="off" id="focusme" type="text" name="meanslike"/> <? } ?>
 <p>
 <input type="submit"/>
 </p>
@@ -169,3 +195,7 @@ document.getElementById('focusme').focus();
 #print_r($means);
 require_once("foot.php");
 ?>
+
+<textarea style="display:none">
+<?=$_SESSION['buff']?>
+</textarea>

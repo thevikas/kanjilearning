@@ -1,9 +1,15 @@
 <?php
 require_once("db.php");
+ob_start();
+global $debugprinting;
+$debugprinting=1;
 $ans = cleanvarp('ans');
 $qid = cleanvarp('id');
 $meanslike = cleanvarp('meanslike');
 $qt = $_POST['qt'];
+
+echo "<!-- POST DATA -->";
+print_r($_POST);
 
 $halt = 0;
 ob_start();
@@ -75,7 +81,7 @@ if($corrects)
     }
     else if($word->difference >= 10)
     {
-        echo "07";
+        echo "07 (jump:$jump,{$word->difference})\n";
         $word->difference += $jump;
     }
     else
@@ -110,28 +116,34 @@ else #handling wrong answers
     $wrongs=1;
 }
 
-$myi->query("insert into score(kanji_id,status,dated) values($qid,$status,now())");
-$myi->query("insert into sensex(v) select avg(100*correct/shown) from stats");
+if($word->firstdate == 0)
+    $word->firstdate = time();
 
-$r = $myi->query("select * from stats where kanji_id=$qid");
+doqueryi("insert into score(kanji_id,status,dated) values($qid,$status,now())");
+doqueryi("insert into sensex(v) select avg(100*correct/shown) from stats");
+
+$r = doqueryi("select * from stats where kanji_id=$qid");
+
 if(!$r->fetch_array())
     doqueryi("INSERT INTO `stats` (`kanji_id`, `shown`, `correct`, `dated`, `wrong`, `difference`, `countdown`) VALUES ($qid,0,0,now(),0,0,0);");
-$myi->query("update stats set countdown=countdown-1 where countdown>0");
-$myi->query($sql = "update stats  set 
+
+doqueryi("update stats set countdown=countdown-1 where countdown>0");
+
+doqueryi($sql = "update stats  set 
                 dated=now()
                 ,shown=shown+1
+                ,firstdate=from_unixtime({$word->firstdate})
                 ,correct=correct+$corrects
                 ,difference={$word->difference}
                 ,countdown=countdown+{$word->difference}
                 ,wrong=wrong+$wrongs
                 
          where kanji_id=$qid");
-echo "<br/><br/>" . $sql;
 
-
+$_SESSION['buff'] = ob_get_contents();
 
 if(!$halt)
-    header("Location: ./?last=$corrects");
+    header("Location: ./?last=$corrects&means={$word->means}&oldid={$word->getID()}");
 ?>
 <script type="text/javascript">
 //setTimeout('window.location.href="./?last=<?=$corrects?>"',5000);

@@ -1,9 +1,16 @@
 <?php
+session_start();
 error_reporting(E_ALL);
 global $myi;
 global $CONFIG_ROOT;
 $CONFIG_ROOT = "/var/www/kanji/null.php";
-$myi = mysqli_connect("localhost","root","tj18","kanji");
+
+require_once("clsWord.php");
+require_once("clsMysqli2.php");
+
+$myi = new mysqli2("localhost","root","tj18","kanji");
+
+#mysqli_connect();
 #$myi->query("SET NAMES 'utf-8'");
 $myi->query("SET CHARACTER SET 'utf-8'"); 
 $myi->query('SET NAMES utf8');
@@ -50,6 +57,17 @@ function cleanvarp($varname,$def="")
     if(isset($_POST[$varname]))
         return $_POST[$varname];
     return $def;
+}
+
+#200912011156:vikas:L62:very commonly required function
+function getcount($sql)
+{
+    global $myi;
+    $r = doqueryi($sql);
+    if(!$r)
+        throw new Exception("EOF! or error" . $myi->error);
+    $rs = $r->fetch_array();
+    return $rs[0];
 }
 
 require_once("clsWord.php");
