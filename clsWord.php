@@ -5,16 +5,48 @@ class clsWord
     var $id;
     var $word;
     var $means;
+    var $shown;
+    var $percentage;
+    var $correct;
+    var $wrong;
+    /*
+     * countdown jumpt difference currently assigned
+     */
+    var $difference;
+    /*
+     * When was it shown first time
+     */
+    var $firstdate;
+    var $dated;
+    /*
+     * Countdown
+     */
+    var $countdown;
+
 
     static function getNextWord()
     {
         global $myi;
-        $r = doqueryi("select id from vocab v
+        $r = doqueryi("select ifnull(countdown,1) as ct,id from vocab v
                 left join stats s on s.kanji_id=v.id  where v.chapter in (1,2,3)
-            order by coalesce(countdown,0),id");
-        $rs = $r->fetch_array();
+                and nextdate<=date(now())
+            order by coalesce(countdown,0),id limit 0,20");
+        $ids = array();
+
+        while($rs = $r->fetch_array())
+        {
+            $ids[] = $rs['id'];
+            if($rs['ct'])
+            {
+                break;
+            }
+        }
+        if(count($ids)==0) return false;
+        $ctr = count($ids);
+        $r_id = $ids[rand(0,$ctr-1)];
+    
         $word = new clsWord();
-        $word->load($rs['id']);
+        $word->load($r_id);
         return $word;
     }
 
@@ -51,6 +83,7 @@ class clsWord
             $this->means = $rs['means'];
             $this->word = $rs['word'];
 
+            $this->dated = $rs['dated'];
             $this->shown = 0 + $rs['shown']; #how many times shown
             $this->correct = 0 + $rs['correct']; #how many times correctly answered
             $this->wrong = 0 + $rs['wrong']; #wrongly answered
@@ -60,7 +93,15 @@ class clsWord
             $this->percentage = 0; #calculated percentage of correct answers
             if($this->shown>0)
                 $this->percentage = round(100*$this->correct/$this->shown);
-    
+
+            if($this->percentage>=90)
+                $this->grade = 'A';
+            else if($this->percentage>=70)
+                $this->grade = 'B';
+            else if($this->percentage>=40)
+                $this->grade = 'C';
+            else if($this->percentage<40)
+                $this->grade = 'D';
             return true;
         }
         die("not found clsword:$id");
@@ -80,16 +121,38 @@ class clsWord
         for($i=0; $i<=$level; $i++)
         {
 
-            $ctr = getcount("select count(*) from stats where countdown<=$total_queue && countdown>$last_total_queue");
+            $ctr = getcount("select count(*) from stats where unix_timestamp(nextdate)<=now() && countdown<=$total_queue && countdown>$last_total_queue");
             echo "\n<!-- $ctr @ $target_count -->\n";
             
             if($ctr==0)
                 break;
             $last_total_queue = $total_queue;
             $total_queue += $ctr;
-            $target_count = $ctr;
+            $targecout_count = $ctr;
         }
         return $total_queue;
+    }
+
+    static function getStatistics()
+    {
+        //how many words attempted today, how many new, how many new words left
+        $sql = "SELECT count( * )
+                FROM `stats`
+                WHERE date( dated ) = date( now( ) ) ";
+        $rt['today'] = getcount($sql);
+
+        $sql = "SELECT count( * )
+                FROM `stats`
+                WHERE date( firstdate ) = date( now( ) ) ";
+        $rt['new'] = getcount($sql);
+
+        $rt['newleft'] = 10 - $rt['new'];
+
+        $rt['sensex'] = getcount("select v from sensex order by dated desc limit 0,1");
+
+        return $rt;
+
+
     }
 }
 

@@ -3,7 +3,14 @@ require_once("db.php");
 global $debugprinting;
 $debugprinting=1;
 
+global $todaystring;
+
+$todaystring = date("Y-m-d",time());
+
 $word = clsWord::getNextWord();
+if(!$word)
+    die("Nothing to do today");
+$stats = clsWord::getStatistics();
 
 #load lowest id kanji
 #$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
@@ -23,14 +30,7 @@ if($qt==1)
 
 
 require_once("header.php");
-$r = doqueryi("select v from sensex order by dated desc limit 0,1");
-?><br/><sub><?
-while($rs = $r->fetch_object())
-{
-    echo "{$rs->v}";
-}
-?></sub><br/>
-<?
+
 $r = doqueryi("select *,100*correct/shown as `percent` from stats");
 
 $level = 13;
@@ -55,10 +55,13 @@ while($rs = $r->fetch_array())
         {
             ?>
             <tr>
+            <td>#</td>
             <?
             foreach($rs as $key => $val)
             {
                 if(is_numeric($key))
+                    continue;
+                if(strstr($key,"date") || strstr($key,"percent"))
                     continue;
                ?>
                 <td>
@@ -75,26 +78,47 @@ while($rs = $r->fetch_array())
             $cls = "current";
         else if($rs['kanji_id'] == cleanvarg("oldid",0))
             $cls = "before";
+        //if(strtotime($rs['nextdate'])>)
+        $nexttime = strtotime($rs['nextdate']);
+        $nextdatestring = date("Y-m-d",$nexttime);
+
+        $rc++;
+        if($todaystring != $nextdatestring && $nexttime>time() )
+            continue;
         ?>
         <tr class="<?=$cls?>">
+        <td title="<?=$nextdatestring?>"><?=$rc?></td>
         <?
         foreach($rs as $key => $val)
         {
             if(is_numeric($key))
                 continue;
+            if(strstr($key,"date") || strstr($key,"percent"))
+                continue;
+
            ?>
             <td>
             <?=$val?>
             </td>
             <?
         }
-        $rc++;
         ?>
     </tr>
     <?
 }
 ?>
 </table>
+
+<div id="stats">
+<label>Seen Today:</label><?=$stats['today']?><br/>
+<label>New Today:</label><?=$stats['new']?><br/>
+<label>New Left:</label><?=$stats['newleft']?><br/>
+<label>Sensex:</label><?=$stats['sensex']?><br/>
+<label>This word:</label><?=$word->percentage?><br/>
+<label class="grade grade<?=$word->grade?>"><?=$word->grade?></label>
+</div>
+
+
 <label title="<?=$_GET['means']?>">Last Answer: <? 
     if(isset($_GET['last']) )
     {
@@ -119,7 +143,7 @@ if($word->shown==0)
 <strong <?=$cls?>>
 <?=$word->word?>
 </strong>
-<sub><small><?=$word->difference?>,<?=$word->wrong?></small></sub>
+<!-- <sub><small><?=$word->difference?>,<?=$word->wrong?></small></sub> -->
 </p>
 <p class="m">
 <label for="focusme">
@@ -137,7 +161,11 @@ if(0)
     <?
 }
 ?></p>
-
+<!--
+<?
+print_r($means);
+?>
+-->
 
 <?php
 if($qt==1)
@@ -146,6 +174,7 @@ if($qt==1)
     for($i=0; $i<5; $i++)
     {
         ?>
+        <!-- $ri=<?=$ri?> -->
         <input type="radio" id="r<?=$i?>" name="ans" value="<?=$means[$ri % 5]?>"/>
         <label for="r<?=$i?>"><?=$i?>: <?=$means[$ri % 5]?></label><br/>
         <?    

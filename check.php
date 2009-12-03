@@ -41,12 +41,18 @@ else if($qt==2)
 #handling correct answers
 if($corrects)
 {
+
+#wrongs can badly change the percentage, therefore a lot of logic can be based on percentage.
+#100% is not the only perfect score. 95% (1/12/09) is also good enough.
     echo "<br/>correct";
     $corrects = 1;
     $jump = 2;
 
-    if($word->correct>3 && $word->percentage==100)
+    if($word->correct>1 && $word->percentage==100)
         $jump = 20;
+
+    if($word->correct>10 && $word->percentage>95)
+        $jump += 20;
 
     if($word->correct>15)
         $jump+=5;
@@ -116,8 +122,25 @@ else #handling wrong answers
     $wrongs=1;
 }
 
+$nextdate = time();
+
 if($word->firstdate == 0)
+{
     $word->firstdate = time();
+    if($word->shown>=5 && $this->grade=='A')
+    {
+        echo "\nN2";
+        $nextdate = time() + 86400;
+    }
+}
+else
+{
+    if($corrects)
+    {
+        echo "\nN1";
+        $nextdate = time() + 86400;
+    }
+}
 
 doqueryi("insert into score(kanji_id,status,dated) values($qid,$status,now())");
 doqueryi("insert into sensex(v) select avg(100*correct/shown) from stats");
@@ -127,11 +150,12 @@ $r = doqueryi("select * from stats where kanji_id=$qid");
 if(!$r->fetch_array())
     doqueryi("INSERT INTO `stats` (`kanji_id`, `shown`, `correct`, `dated`, `wrong`, `difference`, `countdown`) VALUES ($qid,0,0,now(),0,0,0);");
 
-doqueryi("update stats set countdown=countdown-1 where countdown>0");
+doqueryi("update stats set countdown=countdown-1 where countdown>0 and nextdate<=date(now())");
 
 doqueryi($sql = "update stats  set 
                 dated=now()
                 ,shown=shown+1
+                ,nextdate=FROM_UNIXTIME($nextdate)
                 ,firstdate=from_unixtime({$word->firstdate})
                 ,correct=correct+$corrects
                 ,difference={$word->difference}
