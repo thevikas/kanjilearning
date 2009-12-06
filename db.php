@@ -70,5 +70,12 @@ function getcount($sql)
     return $rs[0];
 }
 
+function debugprint($str)
+{
+    global $debugprinting;
+    if($debugprinting)
+        echo $str;
+}
+
 require_once("clsWord.php");
 ?>

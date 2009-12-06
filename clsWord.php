@@ -24,23 +24,39 @@ class clsWord
     var $countdown;
 
 
-    static function getNextWord()
+    static function getNextWord($newword=1)
     {
         global $myi;
-        $r = doqueryi("select ifnull(countdown,1) as ct,id from vocab v
-                left join stats s on s.kanji_id=v.id  where v.chapter in (1,2,3)
-                and nextdate<=date(now())
-            order by coalesce(countdown,0),id limit 0,20");
+        #first get kanji with countdown=ZERO
+        $r = doqueryi("SELECT id FROM vocab v
+                         JOIN stats s ON s.kanji_id=v.id
+                        AND nextdate<=DATE(NOW())
+                        AND countdown=0
+                     LIMIT 0,9");
         $ids = array();
 
         while($rs = $r->fetch_array())
         {
+             debugprint("\n<!-- old -->");
             $ids[] = $rs['id'];
-            if($rs['ct'])
+        }
+
+        if($newword)
+        {
+            #first get a new kanji
+            $r = doqueryi("SELECT id FROM vocab v
+                             left JOIN stats s ON s.kanji_id=v.id
+                                AND countdown is null
+                                order by rand()
+                         LIMIT 0,1");
+
+            while($rs = $r->fetch_array())
             {
-                break;
+                debugprint("\n<!-- new -->");
+                $ids[] = $rs['id'];
             }
         }
+        echo "<!-- "; print_r($ids); echo "-->";
         if(count($ids)==0) return false;
         $ctr = count($ids);
         $r_id = $ids[rand(0,$ctr-1)];
@@ -50,23 +66,46 @@ class clsWord
         return $word;
     }
 
-    static function getRandomWords($correct)
+    static function getRandomWords($word,$bEnglishOptions=1)
     {
+        debugprint(__FUNCTION__ . ":english:$bEnglishOptions");
         #select 5 random meanings
         $ids = array();
-        for($i=0; $i<4; $i++)
+        if($word->percentage>=50)
         {
-            $ids[]=rand(1,720);
+            $r = doqueryi("select kanji_id from stats order by rand() limit 0,4");
+            while($rs = $r->fetch_array())
+            {
+                $ids[] = $rs[0];
+            }
+        }
+        else
+        {
+            for($i=0; $i<4; $i++)
+            {
+                $ids[]=rand(1,720);
+            }
         }
         $idstring = join(',',$ids);
 
-        $r2 = doqueryi("select means from vocab where id in ($idstring)");
+        $r2 = doqueryi("select means,word from vocab where id in ($idstring)");
         $means = array();
-        $means[] = $correct;
+
+        //fill the answer with correct answer
+        if($bEnglishOptions)
+            $means[] = $word->means;
+        else
+            $means[] = $word->word;
+
         while($rs2 = $r2->fetch_array())
         {
-	        $means[] = $rs2['means'];
+            //fill with other wrong answer
+	        if($bEnglishOptions)
+                $means[] = $rs2['means'];
+            else
+                $means[] = $rs2['word'];
         }
+        echo "<!--"; print_r($means); echo "--?>";
         return $means;
 
     }

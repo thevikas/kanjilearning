@@ -1,8 +1,13 @@
 <?php
 require_once("db.php");
 ob_start();
+
 global $debugprinting;
 $debugprinting=1;
+
+
+$halt = 0;
+
 $ans = cleanvarp('ans');
 $qid = cleanvarp('id');
 $meanslike = cleanvarp('meanslike');
@@ -11,7 +16,6 @@ $qt = $_POST['qt'];
 echo "<!-- POST DATA -->";
 print_r($_POST);
 
-$halt = 0;
 ob_start();
 $word = new clsWord();
 $word->load($qid);
@@ -19,6 +23,7 @@ print_r($word);
 
 $wrongs = $corrects = $status=0;
 print_r($_POST);
+$and = "";
 #checking right or wrong based on question type
 if($qt==1)
 {
@@ -26,6 +31,7 @@ if($qt==1)
         $corrects=1;
     else
         $wrongs=1;
+    $ans = $word->means;
 }
 else if($qt==2)
 {
@@ -36,6 +42,12 @@ else if($qt==2)
         $corrects=1;
     else
         $wrongs=1;
+    $ans = $word->means;
+}
+else
+{
+    $ans = $word->word;
+    $corrects = $word->word == $ans;
 }
 
 #handling correct answers
@@ -167,7 +179,7 @@ doqueryi($sql = "update stats  set
 $_SESSION['buff'] = ob_get_contents();
 
 if(!$halt)
-    header("Location: ./?last=$corrects&means={$word->means}&oldid={$word->getID()}");
+    header("Location: ./?last=$corrects&means={$ans}&oldid={$word->getID()}");
 ?>
 <script type="text/javascript">
 //setTimeout('window.location.href="./?last=<?=$corrects?>"',5000);

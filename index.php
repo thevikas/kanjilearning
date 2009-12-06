@@ -1,16 +1,28 @@
 <?php
 require_once("db.php");
 global $debugprinting;
-$debugprinting=1;
+$debugprinting=0;
 
+$means = "";
+if(isset($_GET['means']))
+    $means =$_GET['means'];
+    
 global $todaystring;
+global $question;
+$question= "";
+$cls = "";
 
 $todaystring = date("Y-m-d",time());
 
-$word = clsWord::getNextWord();
+$stats = clsWord::getStatistics();
+
+$word = clsWord::getNextWord($stats['newleft']>0);
+echo "<!-- corrent word id: {$word->id} -->";
+#$word = new clsWord();
+#$word->load(328);
+
 if(!$word)
     die("Nothing to do today");
-$stats = clsWord::getStatistics();
 
 #load lowest id kanji
 #$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
@@ -20,128 +32,84 @@ if($debugprinting)
     print_r($word);
 echo "-->";
 
+#QT defines the type of question
+# 1 - japanese word with english options
+# 2 - japanese word with english textbox
+# 3 - english word with japanese options
+# 4 - english word with japanese textbox
+# 5 - japanese audio with english textbox
+
+
+# ? - japanese word with kanji option
+# ? - kanji word with japanese option
+# ? - kanji word with english word
+
 $qt=1;
 
-if($word->percentage>=80 && $word->correct>5)
-    $qt=2;
+if($word->correct>5 && ($word->grade=='A' || $word->grade=='B'))
+{
+    debugprint("QT2");
+    $qt++; // 2
+}
 
-if($qt==1)
-    $means = clsWord::getRandomWords($word->means);
+if($word->shown>10)
+{
+    debugprint("QT3");
+    $qt++; // 3
+}
 
+if($word->shown>15)
+{
+    debugprint("QT4");
+    $qt++;// 4
+}
+
+if($word->shown>20)
+{
+    debugprint("QT5");
+    $qt++; // 5
+}
+
+echo "<!-- corrent word QT: {$qt} -->";
+
+switch($qt)
+{
+    case 1:
+        {
+            $means = clsWord::getRandomWords($word);
+            $question = $word->word;
+            echo "<!-- case1 -->";
+            break;
+        }
+    case 2:
+        {
+            //nothing
+            echo "<!-- case2 -->";
+            $question = $word->word;
+            break;
+        }
+    case $qt>2:
+        {
+            $means = clsWord::getRandomWords($word,0);
+            echo "<!-- case3 -->";
+            $question = $word->means;
+            break;
+        }
+
+}
 
 require_once("header.php");
-
-$r = doqueryi("select *,100*correct/shown as `percent` from stats");
-
-$level = 13;
+require_once("stats.php");
 ?>
-<table border=1 align=right class="rep">
-<tr>
-<td colspan="10">
-Queue Size for Level <?=$level?> is <big><strong><?=clsWord::getQueueStats($level)?></strong></big>
-
-<?=clsWord::getQueueStats(4)?>,
-<?=clsWord::getQueueStats(3)?>,
-<?=clsWord::getQueueStats(2)?>,
-<?=clsWord::getQueueStats(1)?>,
-<?=clsWord::getQueueStats(0)?>
-</td>
-</tr>
-<?
-$rc=0;
-while($rs = $r->fetch_array())
-{
-        if($rc==0)
-        {
-            ?>
-            <tr>
-            <td>#</td>
-            <?
-            foreach($rs as $key => $val)
-            {
-                if(is_numeric($key))
-                    continue;
-                if(strstr($key,"date") || strstr($key,"percent"))
-                    continue;
-               ?>
-                <td>
-                <?=$key?>
-                </td>
-                <?
-            }
-            ?>
-            </tr>
-            <?
-        }
-        $cls = "";
-        if($rs['kanji_id'] == $word->id)
-            $cls = "current";
-        else if($rs['kanji_id'] == cleanvarg("oldid",0))
-            $cls = "before";
-        //if(strtotime($rs['nextdate'])>)
-        $nexttime = strtotime($rs['nextdate']);
-        $nextdatestring = date("Y-m-d",$nexttime);
-
-        $rc++;
-        if($todaystring != $nextdatestring && $nexttime>time() )
-            continue;
-        ?>
-        <tr class="<?=$cls?>">
-        <td title="<?=$nextdatestring?>"><?=$rc?></td>
-        <?
-        foreach($rs as $key => $val)
-        {
-            if(is_numeric($key))
-                continue;
-            if(strstr($key,"date") || strstr($key,"percent"))
-                continue;
-
-           ?>
-            <td>
-            <?=$val?>
-            </td>
-            <?
-        }
-        ?>
-    </tr>
-    <?
-}
-?>
-</table>
-
-<div id="stats">
-<label>Seen Today:</label><?=$stats['today']?><br/>
-<label>New Today:</label><?=$stats['new']?><br/>
-<label>New Left:</label><?=$stats['newleft']?><br/>
-<label>Sensex:</label><?=$stats['sensex']?><br/>
-<label>This word:</label><?=$word->percentage?><br/>
-<label class="grade grade<?=$word->grade?>"><?=$word->grade?></label>
-</div>
-
-
-<label title="<?=$_GET['means']?>">Last Answer: <? 
-    if(isset($_GET['last']) )
-    {
-        if($_GET['last']==1) 
-            echo "Correct"; 
-        else
-        {
-            ?><font color=red>Wrong</font><?
-        }
-    }
-
-$cls = "";
-if($word->shown==0)
-    $cls = " class=\"new\" ";
-
-?></label/>
 
 <form method="post" action="check.php">
 <input type="hidden" name="id" value="<?=$word->id?>"/>
 <p class="w">
 <label>Word</label>
 <strong <?=$cls?>>
-<?=$word->word?>
+<?
+echo $question
+?>
 </strong>
 <!-- <sub><small><?=$word->difference?>,<?=$word->wrong?></small></sub> -->
 </p>
@@ -162,13 +130,14 @@ if(0)
 }
 ?></p>
 <!--
+MEANS:
 <?
 print_r($means);
 ?>
 -->
 
 <?php
-if($qt==1)
+if($qt==1 || $qt>2)
 {
     $ri = rand(1,5);
     for($i=0; $i<5; $i++)
