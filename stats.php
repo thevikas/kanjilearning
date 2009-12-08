@@ -79,6 +79,7 @@ while($rs = $r->fetch_array())
 
 <div id="stats">
 <label>Seen Today:</label><?=$stats['today']?><br/>
+<label>Session Duraton:</label><?=$stats['session']?><br/>
 <label>New Today:</label><?=$stats['new']?><br/>
 <label>New Left:</label><?=$stats['newleft']?><br/>
 <label>Sensex:</label><?=$stats['sensex']?><br/>

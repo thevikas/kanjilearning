@@ -5,6 +5,9 @@ global $myi;
 global $CONFIG_ROOT;
 $CONFIG_ROOT = "/var/www/kanji/null.php";
 
+$quiz_mode = 1; //daily system things
+$quiz_mode = 2; //no daily system, time counter for half hour - no limit on new words
+
 require_once("clsWord.php");
 require_once("clsMysqli2.php");
 
@@ -76,6 +79,9 @@ function debugprint($str)
     if($debugprinting)
         echo $str;
 }
+
+if(!isset($_SESSION['started']))
+    $_SESSION['started'] = time();
 
 require_once("clsWord.php");
 ?>

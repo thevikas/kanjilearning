@@ -77,7 +77,7 @@ switch($qt)
     case 1:
         {
             $means = clsWord::getRandomWords($word);
-            $question = $word->word;
+            $question = $word->word . " ({$word->kanji})";;
             echo "<!-- case1 -->";
             break;
         }
@@ -85,7 +85,7 @@ switch($qt)
         {
             //nothing
             echo "<!-- case2 -->";
-            $question = $word->word;
+            $question = $word->word . " ({$word->kanji})";
             break;
         }
     case $qt>2:

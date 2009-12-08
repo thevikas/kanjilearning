@@ -88,22 +88,30 @@ class clsWord
         }
         $idstring = join(',',$ids);
 
-        $r2 = doqueryi("select means,word from vocab where id in ($idstring)");
+        $r2 = doqueryi("select means,word,word2 from vocab where id in ($idstring)");
         $means = array();
 
+        $kanji  = "";
+        if(!empty($word->kanji))
+            $kanji = " ({$word->kanji})";
+            
         //fill the answer with correct answer
         if($bEnglishOptions)
             $means[] = $word->means;
         else
-            $means[] = $word->word;
+            $means[] = "{$word->word}{$kanji}";
 
         while($rs2 = $r2->fetch_array())
         {
             //fill with other wrong answer
+            $kanji  = "";
+            if(!empty($rs2['word2']))
+                $kanji = " ({$rs2['word2']})";
+
 	        if($bEnglishOptions)
                 $means[] = $rs2['means'];
             else
-                $means[] = $rs2['word'];
+                $means[] = $rs2['word'] . "$kanji";
         }
         echo "<!--"; print_r($means); echo "--?>";
         return $means;
@@ -121,6 +129,7 @@ class clsWord
             $this->id = $rs['id'];
             $this->means = $rs['means'];
             $this->word = $rs['word'];
+            $this->kanji = $rs['word2'];
 
             $this->dated = $rs['dated'];
             $this->shown = 0 + $rs['shown']; #how many times shown
@@ -174,6 +183,7 @@ class clsWord
 
     static function getStatistics()
     {
+        global $quiz_mode;
         //how many words attempted today, how many new, how many new words left
         $sql = "SELECT count( * )
                 FROM `stats`
@@ -185,9 +195,20 @@ class clsWord
                 WHERE date( firstdate ) = date( now( ) ) ";
         $rt['new'] = getcount($sql);
 
-        $rt['newleft'] = 10 - $rt['new'];
-
+        if($quiz_mode==2)
+            $rt['newleft'] = 10;
+        else
+            $rt['newleft'] = 10 - $rt['new'];
+        
         $rt['sensex'] = getcount("select v from sensex order by dated desc limit 0,1");
+
+        if(isset($_SESSION['started']))
+        {
+            $ses_length = time() - $_SESSION['started'];
+            $s_mins = intval($ses_length / 60);
+            $s_secs = $ses_length % 60;
+            $rt['session'] = "$s_mins:$s_secs";
+        }
 
         return $rt;
 

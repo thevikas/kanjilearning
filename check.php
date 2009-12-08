@@ -154,6 +154,9 @@ else
     }
 }
 
+if($quiz_mode==2)
+    $nextdate = time();
+
 doqueryi("insert into score(kanji_id,status,dated) values($qid,$status,now())");
 doqueryi("insert into sensex(v) select avg(100*correct/shown) from stats");
 
@@ -162,7 +165,12 @@ $r = doqueryi("select * from stats where kanji_id=$qid");
 if(!$r->fetch_array())
     doqueryi("INSERT INTO `stats` (`kanji_id`, `shown`, `correct`, `dated`, `wrong`, `difference`, `countdown`) VALUES ($qid,0,0,now(),0,0,0);");
 
-doqueryi("update stats set countdown=countdown-1 where countdown>0 and nextdate<=date(now())");
+$sql = "";
+if($quiz_mode==1)
+    $sql = " and nextdate<=date(now())";
+
+doqueryi("update stats set countdown=countdown-1 where countdown>0 $sql");
+
 
 doqueryi($sql = "update stats  set 
                 dated=now()
