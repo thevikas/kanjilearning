@@ -8,6 +8,12 @@ $CONFIG_ROOT = "/var/www/kanji/null.php";
 $quiz_mode = 1; //daily system things
 $quiz_mode = 2; //no daily system, time counter for half hour - no limit on new words
 
+global $new_kanji_ratio;
+global $old_kanji_ratio;
+$old_kanji_ratio = 40;
+$new_kanji_ratio = 1;
+
+
 require_once("clsWord.php");
 require_once("clsMysqli2.php");
 

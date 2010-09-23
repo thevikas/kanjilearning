@@ -1,7 +1,7 @@
 <?php
 require_once("db.php");
 global $debugprinting;
-$debugprinting=0;
+$debugprinting=1;
 
 $means = "";
 if(isset($_GET['means']))
@@ -16,7 +16,11 @@ $todaystring = date("Y-m-d",time());
 
 $stats = clsWord::getStatistics();
 
-$word = clsWord::getNextWord($stats['newleft']>0);
+$oldid = 0;
+if(isset($_REQUEST['oldid']))
+    $oldid = $_REQUEST['oldid'];
+
+$word = clsWord::getNextWord($stats['newleft']>0,$oldid);
 echo "<!-- corrent word id: {$word->id} -->";
 #$word = new clsWord();
 #$word->load(328);
@@ -74,21 +78,21 @@ echo "<!-- corrent word QT: {$qt} -->";
 
 switch($qt)
 {
-    case 1:
+    case 1: //with hinting
         {
             $means = clsWord::getRandomWords($word);
             $question = $word->word . " ({$word->kanji})";;
             echo "<!-- case1 -->";
             break;
         }
-    case 2:
+    case 2: //no hinting
         {
             //nothing
             echo "<!-- case2 -->";
             $question = $word->word . " ({$word->kanji})";
             break;
         }
-    case $qt>2:
+    case $qt>2: //no options, a textbox to answer in english
         {
             $means = clsWord::getRandomWords($word,0);
             echo "<!-- case3 -->";

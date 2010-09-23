@@ -24,15 +24,17 @@ class clsWord
     var $countdown;
 
 
-    static function getNextWord($newword=1)
+    static function getNextWord($newword=1,$oldid=0)
     {
         global $myi;
+        global $new_kanji_ratio;
+        global $old_kanji_ratio;
         #first get kanji with countdown=ZERO
         $r = doqueryi("SELECT id FROM vocab v
                          JOIN stats s ON s.kanji_id=v.id
-                        AND nextdate<=DATE(NOW())
+                        AND date(nextdate)<=DATE(NOW())
                         AND countdown=0
-                     LIMIT 0,9");
+                     LIMIT 0,$old_kanji_ratio");
         $ids = array();
 
         while($rs = $r->fetch_array())
@@ -44,19 +46,21 @@ class clsWord
         if($newword)
         {
             #first get a new kanji
-            $r = doqueryi("SELECT id FROM vocab v
+            $r = doqueryi("SELECT id,countdown FROM vocab v
                              left JOIN stats s ON s.kanji_id=v.id
-                                AND countdown is null
+                                where book=10 and v.id != $oldid and countdown IS NULL
                                 order by rand()
-                         LIMIT 0,1");
+                         LIMIT 0,$new_kanji_ratio");
 
             while($rs = $r->fetch_array())
             {
                 debugprint("\n<!-- new -->");
+                if($rs['countdown']>0)
+                    throw new Exception("lovely! countdown was ZERO?");
                 $ids[] = $rs['id'];
             }
         }
-        echo "<!-- "; print_r($ids); echo "-->";
+        echo "<!-- ids array="; print_r($ids); echo "-->";
         if(count($ids)==0) return false;
         $ctr = count($ids);
         $r_id = $ids[rand(0,$ctr-1)];
@@ -131,6 +135,8 @@ class clsWord
             $this->word = $rs['word'];
             $this->kanji = $rs['word2'];
 
+            $this->book = $rs['book'];
+
             $this->dated = $rs['dated'];
             $this->shown = 0 + $rs['shown']; #how many times shown
             $this->correct = 0 + $rs['correct']; #how many times correctly answered
@@ -157,7 +163,7 @@ class clsWord
 
     public function getID()
     {
-        return $id;
+        return $this->id;
     }
 
     static function getQueueStats($level=1)    

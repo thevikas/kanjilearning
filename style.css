@@ -1,6 +1,6 @@
 body
 {
-font-size: 2em;
+font-size: 1.4em;
 }
 
 label
@@ -19,9 +19,34 @@ input.correct
 }
 table.rep
 {
-    font-size: .35em;
+    font-size: .5em;
 }
 tr.current
 {
+    font-weight: bold;
+}
+
+tr.totals td
+{
+    font-weight: bold;
+}
+table.stt, .stt
+{
+    float:right;
+    border: solid 1px black;
+    
+    font-size: 0.5em;
+}
+table.cright
+{
+    clear:left;
+}
+table#r0
+{
+    clear:right;
+}
+tr.oldid td
+{
+    color: green;
     font-weight: bold;
 }

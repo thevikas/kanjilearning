@@ -8,7 +8,7 @@ $debugprinting=1;
 
 $halt = 0;
 
-$ans = cleanvarp('ans');
+$ans0 = $ans = cleanvarp('ans');
 $qid = cleanvarp('id');
 $meanslike = cleanvarp('meanslike');
 $qt = $_POST['qt'];
@@ -60,10 +60,10 @@ if($corrects)
     $corrects = 1;
     $jump = 2;
 
-    if($word->correct>1 && $word->percentage==100)
+    if($word->correct>1 && 'A' == $word->grade)
         $jump = 20;
 
-    if($word->correct>10 && $word->percentage>95)
+    if($word->correct>10 && 'A' == $word->grade)
         $jump += 20;
 
     if($word->correct>15)
@@ -186,8 +186,12 @@ doqueryi($sql = "update stats  set
 
 $_SESSION['buff'] = ob_get_contents();
 
+$location_header = "Location: ./?last=$corrects&means={$ans}&oldid={$word->getID()}&means={$meanslike}&qt={$qt}&ans0={$ans0}";
+
+debugprint("location:" . $location_header);
+
 if(!$halt)
-    header("Location: ./?last=$corrects&means={$ans}&oldid={$word->getID()}");
+    header($location_header);
 ?>
 <script type="text/javascript">
 //setTimeout('window.location.href="./?last=<?=$corrects?>"',5000);

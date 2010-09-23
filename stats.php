@@ -2,8 +2,12 @@
 $r = doqueryi("select *,100*correct/shown as `percent` from stats");
 
 $level = 13;
+if(!isset($_SESSION['ctrd']))
+    $ctrda = array();
+else
+    $ctrda = $_SESSION['ctrd'];
 ?>
-<table border=1 align=right class="rep">
+<table border=1 align=right class="rep cright">
 <tr>
 <td colspan="10">
 Queue Size for Level <?=$level?> is <big><strong><?=clsWord::getQueueStats($level)?></strong></big>
@@ -15,14 +19,34 @@ Queue Size for Level <?=$level?> is <big><strong><?=clsWord::getQueueStats($leve
 <?=clsWord::getQueueStats(0)?>
 </td>
 </tr>
+</table>
+
+<div style="float:right; clear:both;" class="stt">
+<?
+while(count($ctrda)>10)
+{
+    foreach($ctrda as $key => $v)
+    {
+        unset($ctrda[$key]);
+        break;
+    }
+    //die;
+}
+echo implode($ctrda,",");
+?>
+</div>
+<br/>
 <?
 $rc=0;
+$key_total = array();
 while($rs = $r->fetch_array())
 {
         $cls = "";
-        if($rc==0)
+        if($rc %27 ==0)
         {
             ?>
+            </table>
+            <table id="r<?=$rc?>" class="stt" border="1">
             <tr>
             <td>#</td>
             <?
@@ -30,6 +54,19 @@ while($rs = $r->fetch_array())
             {
                 if(is_numeric($key))
                     continue;
+                if($key == 'countdown')
+                    $key = 'ctrd';
+                if($key == 'difference')
+                    $key = 'diff';
+                if($key == 'kanji_id')
+                    $key = 'id';
+                if($key == 'shown')
+                    $key = 'sh.';
+                if($key == 'correct')
+                    $key = 'cr.';
+                if($key == 'wrong')
+                    $key = 'wr.';
+                
                 if(strstr($key,"date") || strstr($key,"percent"))
                     continue;
                ?>
@@ -46,6 +83,9 @@ while($rs = $r->fetch_array())
             $cls = "current";
         else if($rs['kanji_id'] == cleanvarg("oldid",0))
             $cls = "before";
+
+        if(isset($_REQUEST['oldid']) && $_REQUEST['oldid']==$rs['kanji_id'])
+            $cls .= " oldid";
         //if(strtotime($rs['nextdate'])>)
         $nexttime = strtotime($rs['nextdate']);
         $nextdatestring = date("Y-m-d",$nexttime);
@@ -54,7 +94,7 @@ while($rs = $r->fetch_array())
         if($todaystring != $nextdatestring && $nexttime>time() )
             continue;
         ?>
-        <tr class="<?=$cls?>">
+        <tr class="<?=$cls?>" id="k<?=$rs['kanji_id']?>">
         <td title="<?=$nextdatestring?>"><?=$rc?></td>
         <?
         foreach($rs as $key => $val)
@@ -64,19 +104,48 @@ while($rs = $r->fetch_array())
             if(strstr($key,"date") || strstr($key,"percent"))
                 continue;
 
+            if(!isset($key_total[$key]))
+                $key_total[$key] = 0;
+            $key_total[$key] += $val;
+
            ?>
             <td>
             <?=$val?>
             </td>
             <?
+            
         }
         ?>
     </tr>
     <?
-}
-?>
-</table>
+            //print_r($key_total);
 
+}
+
+
+    ?><tr class="<?=$cls?> totals">
+        <td title="total">T</td>
+        <?
+    foreach($key_total as $key => $val)
+    {
+           ?>
+            <td>
+            <?=$key_total[$key]?>
+            </td>
+            <?
+    }
+        ?>
+    </tr>
+</table>
+<?
+if(!isset($_SESSION['ctrd']))
+{
+    $_SESSION['ctrd'] = array();
+}
+$ctrda[] = $key_total['countdown'];
+$_SESSION['ctrd'] = $ctrda;
+
+?>
 <div id="stats">
 <label>Seen Today:</label><?=$stats['today']?><br/>
 <label>Session Duraton:</label><?=$stats['session']?><br/>
@@ -104,3 +173,4 @@ if($word->shown==0)
     $cls = " class=\"new\" ";
 
 ?></label/>
+
