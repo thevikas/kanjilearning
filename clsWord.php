@@ -33,7 +33,7 @@ class clsWord
         $r = doqueryi("SELECT id FROM vocab v
                          JOIN stats s ON s.kanji_id=v.id
                         AND date(nextdate)<=DATE(NOW())
-                        AND countdown=0
+                        -- AND countdown=0
                      LIMIT 0,$old_kanji_ratio");
         $ids = array();
 
@@ -45,10 +45,14 @@ class clsWord
 
         if($newword)
         {
+            //debugprint(__FILE__ . ":" . __LINE__ . "; new word");
             #first get a new kanji
-            $r = doqueryi("SELECT id,countdown FROM vocab v
+            $r = doqueryi("SELECT id,countdown,chapter FROM vocab v
                              left JOIN stats s ON s.kanji_id=v.id
-                                where book=10 and v.id != $oldid and countdown IS NULL
+                                where 1=1 
+                                -- and book=10
+                                and chapter between 1 and 10
+                                and v.id != $oldid and countdown IS NULL
                                 order by rand()
                          LIMIT 0,$new_kanji_ratio");
 
@@ -57,7 +61,7 @@ class clsWord
                 debugprint("\n<!-- new -->");
                 if($rs['countdown']>0)
                     throw new Exception("lovely! countdown was ZERO?");
-                $ids[] = $rs['id'];
+                $ids[] = array('id' =>$rs['id'], 'chapter' => $rs['chapter']);
             }
         }
         echo "<!-- ids array="; print_r($ids); echo "-->";
@@ -66,33 +70,38 @@ class clsWord
         $r_id = $ids[rand(0,$ctr-1)];
     
         $word = new clsWord();
+        if(is_array($r_id))
+            $r_id = $r_id['id'];
         $word->load($r_id);
         return $word;
     }
 
+    #TODO: the words are comming twice
     static function getRandomWords($word,$bEnglishOptions=1)
     {
-        debugprint(__FUNCTION__ . ":english:$bEnglishOptions");
+        //debugprint(__FUNCTION__ . ":english:$bEnglishOptions");
         #select 5 random meanings
         $ids = array();
         if($word->percentage>=50)
         {
-            $r = doqueryi("select kanji_id from stats order by rand() limit 0,4");
+            debugprint(__FUNCTION__ . ":" . __LINE__);
+            $r = doqueryi("select kanji_id from stats order by rand() limit 0,5");
             while($rs = $r->fetch_array())
             {
+                //debugprint("fetch:" . $rs[0]);
                 $ids[] = $rs[0];
             }
         }
         else
         {
-            for($i=0; $i<4; $i++)
+            for($i=0; $i<25; $i++)
             {
-                $ids[]=rand(1,720);
+                $ids[]=rand(1,840);
             }
         }
         $idstring = join(',',$ids);
 
-        $r2 = doqueryi("select means,word,word2 from vocab where id in ($idstring)");
+        $r2 = doqueryi("select means,word,word2 from vocab where chapter between 1 and 10 order by rand() limit 0,5");
         $means = array();
 
         $kanji  = "";
@@ -113,9 +122,18 @@ class clsWord
                 $kanji = " ({$rs2['word2']})";
 
 	        if($bEnglishOptions)
-                $means[] = $rs2['means'];
+                $addthis = $rs2['means'];
             else
-                $means[] = $rs2['word'] . "$kanji";
+                $addthis = $rs2['word'] . "$kanji";
+
+            if($addthis == $means[0])
+            {
+                //debugprint(__FUNCTION__ . "; not adding this element {$means[0]}");
+                //array_pop($means);
+            }
+            else
+                $means[] = $addthis;
+
         }
         echo "<!--"; print_r($means); echo "--?>";
         return $means;
@@ -135,6 +153,8 @@ class clsWord
             $this->word = $rs['word'];
             $this->kanji = $rs['word2'];
 
+            $this->chapter = $rs['chapter'];
+
             $this->book = $rs['book'];
 
             $this->dated = $rs['dated'];
@@ -145,20 +165,33 @@ class clsWord
             $this->countdown = 0 + $rs['countdown']; #the countdown, counted after every attempt of any word
             $this->firstdate = $rs['firstdate'] == '0000-00-00 00:00:00' ? 0 : strtotime($rs['firstdate']); 
             $this->percentage = 0; #calculated percentage of correct answers
-            if($this->shown>0)
-                $this->percentage = round(100*$this->correct/$this->shown);
 
-            if($this->percentage>=90)
-                $this->grade = 'A';
-            else if($this->percentage>=70)
-                $this->grade = 'B';
-            else if($this->percentage>=40)
-                $this->grade = 'C';
-            else if($this->percentage<40)
-                $this->grade = 'D';
-            return true;
+            $a = $this->getGrade($this->shown,$this->correct);
+            
+            $this->percentage = $a[0];
+            $this->grade = $a[1];
         }
-        die("not found clsword:$id");
+        else
+            die("not found clsword:$id");
+
+    }
+
+    static function getGrade($shown,$correct)
+    {
+        $percentage = 0;
+        
+        if($shown>0)
+            $percentage = round(100*$correct/$shown);
+
+        if($percentage>=90)
+            $grade = 'A';
+        else if($percentage>=75)
+            $grade = 'B';
+        else if($percentage>=40)
+            $grade = 'C';
+        else if($percentage<40)
+            $grade = 'D';
+        return array($percentage,$grade);
     }
 
     public function getID()
@@ -194,17 +227,36 @@ class clsWord
         $sql = "SELECT count( * )
                 FROM `stats`
                 WHERE date( dated ) = date( now( ) ) ";
+        $sql = "
+                SELECT count(*) FROM `score` 
+                    where date(dated)=date(now())";
         $rt['today'] = getcount($sql);
+        
+        
 
         $sql = "SELECT count( * )
                 FROM `stats`
                 WHERE date( firstdate ) = date( now( ) ) ";
         $rt['new'] = getcount($sql);
 
+        #does not work even after the first word
+        $sql = "SELECT date( now( ) ) - date( max( dated ) )
+                FROM `stats`";
+        $days_since_last_play = getcount($sql);
+
+
         if($quiz_mode==2)
             $rt['newleft'] = 10;
         else
             $rt['newleft'] = 10 - $rt['new'];
+
+        #moe than 3 days old, no new kanjis will be loaded
+        if(isset($_SESSION['veryold']) || $days_since_last_play > 3)
+        {
+            $_SESSION['veryold'] = 1;
+            debugprint("no new mode");
+            $rt['newleft'] = 0;
+        }
         
         $rt['sensex'] = getcount("select v from sensex order by dated desc limit 0,1");
 
@@ -219,6 +271,48 @@ class clsWord
         return $rt;
 
 
+    }
+
+    static function search($word)
+    {
+        debugprint(__FUNCTION__ . "($word)");
+        global $myi;
+        $word2 = $word;//$myi->real_escape_string($word);
+        $r = doqueryi("SELECT id FROM vocab v
+                        where word like '$word2'");
+        if($r->num_rows == 0)
+            $r = doqueryi("SELECT id FROM vocab v
+                    where word like '%$word2%'");
+        $ids = array();
+        $w = new clsWord();
+
+        while($rs = $r->fetch_array())
+        {
+            $id = $rs['id'];
+            debugprint("found word id:$id");
+            $w->load($id);
+            return $w;                      
+        }
+    }
+
+    static function changechapter($ids,$chapter)
+    {
+        debugprint(__FUNCTION__ . "($ids,$chapter)");
+        global $myi;
+        doqueryi("update vocab set chapter=$chapter where id in ($ids)");
+    }
+
+    static function addnew($word,$means,$kanji = "")
+    {
+        debugprint(__FUNCTION__ . "($word,$means,$kanji)called");
+        $word  = addslashes($word);
+        $word2 = addslashes($word);
+        $kanji = addslashes($kanji);
+        
+        doqueryi("insert into vocab(word,means,word2) values('$word','$means','$kanji')");
+        global $myi;
+        debugprint(__FUNCTION__ . " returning {$myi->insert_id}\n");
+        return $myi->insert_id;
     }
 }
 

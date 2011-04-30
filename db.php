@@ -6,7 +6,7 @@ global $CONFIG_ROOT;
 $CONFIG_ROOT = "/var/www/kanji/null.php";
 
 $quiz_mode = 1; //daily system things
-$quiz_mode = 2; //no daily system, time counter for half hour - no limit on new words
+//$quiz_mode = 2; //no daily system, time counter for half hour - no limit on new words
 
 global $new_kanji_ratio;
 global $old_kanji_ratio;
@@ -76,7 +76,10 @@ function getcount($sql)
     if(!$r)
         throw new Exception("EOF! or error" . $myi->error);
     $rs = $r->fetch_array();
-    return $rs[0];
+    if(isset($rs[1]))
+        return array($rs[0],$rs[1]);
+    else
+        return $rs[0];
 }
 
 function debugprint($str)

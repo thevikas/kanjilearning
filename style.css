@@ -35,7 +35,7 @@ table.stt, .stt
     float:right;
     border: solid 1px black;
     
-    font-size: 0.5em;
+    font-size: 0.35em;
 }
 table.cright
 {
@@ -44,9 +44,59 @@ table.cright
 table#r0
 {
     clear:right;
+    margin-right: -120px;
 }
 tr.oldid td
 {
     color: green;
     font-weight: bold;
 }
+strong.new
+{
+    color: blue;
+}
+
+tr.today
+{
+    background-color: yellow;
+}
+
+tr.firsttoday
+{
+    background-color: orange;
+}
+input.qt4, input.qt5
+{
+    background-color: blue;
+    color: white;
+    font-weight: bold;
+    font-size: 1.3em;
+}
+
+span.kanji
+{
+    font-weight: normal;
+}
+
+/*
+tr.grade-A td.key-kanji_id
+{
+    color: mediumblue;
+}
+
+tr.grade-B td.key-kanji_id
+{
+    color: green;
+}
+
+tr.grade-C td.key-kanji_id
+{
+    color: yellow;
+    background-color: black;
+}
+
+tr.grade-D td.key-kanji_id
+{
+    color: red;
+}
+*/

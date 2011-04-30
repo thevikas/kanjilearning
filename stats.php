@@ -1,5 +1,16 @@
 <?
-$r = doqueryi("select *,100*correct/shown as `percent` from stats");
+$per_stats_page = 34;
+
+$r4 = doqueryi( "
+SELECT countdown, count( * ) as ctr
+FROM `stats`
+GROUP BY countdown
+ORDER BY countdown
+LIMIT 0 , 10");
+
+$r = doqueryi( "select *,100*correct/shown as `percent` from stats order by countdown,difference desc limit 0," . ($per_stats_page * 2)  );
+if(!$r)
+    echo mysql_error();
 
 $level = 13;
 if(!isset($_SESSION['ctrd']))
@@ -21,7 +32,7 @@ Queue Size for Level <?=$level?> is <big><strong><?=clsWord::getQueueStats($leve
 </tr>
 </table>
 
-<div style="float:right; clear:both;" class="stt">
+<div style="display:none;float:right; clear:both;" class="stt">
 <?
 while(count($ctrda)>10)
 {
@@ -42,7 +53,7 @@ $key_total = array();
 while($rs = $r->fetch_array())
 {
         $cls = "";
-        if($rc %27 ==0)
+        if($rc % $per_stats_page ==0)
         {
             ?>
             </table>
@@ -53,6 +64,8 @@ while($rs = $r->fetch_array())
             foreach($rs as $key => $val)
             {
                 if(is_numeric($key))
+                    continue;
+                if(strstr($key,"date") || strstr($key,"percent") || strstr($key,"correct")|| strstr($key,"wrong")|| strstr($key,"shown"))
                     continue;
                 if($key == 'countdown')
                     $key = 'ctrd';
@@ -67,8 +80,6 @@ while($rs = $r->fetch_array())
                 if($key == 'wrong')
                     $key = 'wr.';
                 
-                if(strstr($key,"date") || strstr($key,"percent"))
-                    continue;
                ?>
                 <td>
                 <?=$key?>
@@ -86,6 +97,13 @@ while($rs = $r->fetch_array())
 
         if(isset($_REQUEST['oldid']) && $_REQUEST['oldid']==$rs['kanji_id'])
             $cls .= " oldid";
+
+        if(date('Y-m-d',strtotime($rs['dated'])) ==  date('Y-m-d'))
+                $cls .= " today";
+
+        if(date('Y-m-d',strtotime($rs['firstdate'])) ==  date('Y-m-d'))
+                $cls .= " firsttoday";
+
         //if(strtotime($rs['nextdate'])>)
         $nexttime = strtotime($rs['nextdate']);
         $nextdatestring = date("Y-m-d",$nexttime);
@@ -93,15 +111,23 @@ while($rs = $r->fetch_array())
         $rc++;
         if($todaystring != $nextdatestring && $nexttime>time() )
             continue;
+
+        $a = clsWord::getGrade($rs['shown'],$rs['correct']);
+        $grade = $a[1];
+
+        #if($rs['countdown'] > 50 || $rc<35)
+        #    continue;
+
         ?>
-        <tr class="<?=$cls?>" id="k<?=$rs['kanji_id']?>">
+        <tr class="<?=$cls?> grade-<?=$grade?>" id="k<?=$rs['kanji_id']?>">
         <td title="<?=$nextdatestring?>"><?=$rc?></td>
         <?
+
         foreach($rs as $key => $val)
         {
             if(is_numeric($key))
                 continue;
-            if(strstr($key,"date") || strstr($key,"percent"))
+            if(strstr($key,"date") || strstr($key,"percent") || strstr($key,"correct") || strstr($key,"wrong")|| strstr($key,"shown"))
                 continue;
 
             if(!isset($key_total[$key]))
@@ -109,7 +135,7 @@ while($rs = $r->fetch_array())
             $key_total[$key] += $val;
 
            ?>
-            <td>
+            <td class="key-<?=$key?>">
             <?=$val?>
             </td>
             <?
@@ -129,15 +155,33 @@ while($rs = $r->fetch_array())
     foreach($key_total as $key => $val)
     {
            ?>
-            <td>
-            <?=$key_total[$key]?>
+            <td key="<?=$key?>">
+            <?=$key_total[$key]?><br/>
+            <small><?=round($key_total[$key]/$rc,2)?></small>
             </td>
             <?
     }
         ?>
     </tr>
 </table>
+
+<table border="1" class="rep" style="float: right">
 <?
+while($rs4 = $r4->fetch_array())
+{
+    ?>
+    <tr>
+        <td>
+        <?=$rs4[0]?>
+        </td>
+        <td>
+        <?=$rs4[1]?>
+        </td>
+    </tr><?
+}
+?></table><?
+
+
 if(!isset($_SESSION['ctrd']))
 {
     $_SESSION['ctrd'] = array();
@@ -151,9 +195,8 @@ $_SESSION['ctrd'] = $ctrda;
 <label>Session Duraton:</label><?=$stats['session']?><br/>
 <label>New Today:</label><?=$stats['new']?><br/>
 <label>New Left:</label><?=$stats['newleft']?><br/>
-<label>Sensex:</label><?=$stats['sensex']?><br/>
-<label>This word:</label><?=$word->percentage?><br/>
-<label class="grade grade<?=$word->grade?>"><?=$word->grade?></label>
+<!-- <label>Sensex:</label><?=$stats['sensex']?><br/> -->
+<label>This word/grade:</label><?=$word->percentage?>  <?=$word->grade?></label>
 </div>
 
 

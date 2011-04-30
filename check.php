@@ -5,7 +5,6 @@ ob_start();
 global $debugprinting;
 $debugprinting=1;
 
-
 $halt = 0;
 
 $ans0 = $ans = cleanvarp('ans');
@@ -25,18 +24,24 @@ $wrongs = $corrects = $status=0;
 print_r($_POST);
 $and = "";
 #checking right or wrong based on question type
+# 1 - japanese word with english options
 if($qt==1)
 {
-    if(addslashes($word->means) == $ans)
+    #201103231310:vikas:fixed a bug in comparision.
+    if(addslashes($word->means) == addslashes($ans))
         $corrects=1;
     else
         $wrongs=1;
     $ans = $word->means;
 }
+# 2 - japanese word with english textbox
 else if($qt==2)
 {
     $w_means = strtolower(addslashes($word->means));
     $w_given = strtolower(addslashes($meanslike));
+    #space are ignored whike checking, all space removed from both answer and given
+    $w_means = str_replace(' ', '', $w_means);
+    $w_given = str_replace(' ', '', $w_given);
 
     if(strstr($w_means,$w_given))
         $corrects=1;
@@ -44,10 +49,30 @@ else if($qt==2)
         $wrongs=1;
     $ans = $word->means;
 }
-else
+# 3 - english word with japanese options
+else if($qt==3)
 {
     $ans = $word->word;
     $corrects = $word->word == $ans;
+}
+# 4 - english word with japanese textbox
+else if($qt>=4)
+{
+    $w_japword = strtolower(addslashes($word->word));
+    $w_given = strtolower(addslashes($meanslike));
+
+    #201104042127:vikas:to remove junk dots while comparision
+    $w_japword = str_replace("・", "", $w_japword);
+
+
+    if(strstr($w_japword,$w_given))
+        $corrects=1;
+    else
+        $wrongs=1;
+
+    debugprint("[$w_japword] ? [$w_given] $corrects/$wrongs;");
+
+    $ans = $word->word;
 }
 
 #handling correct answers
@@ -169,9 +194,24 @@ $sql = "";
 if($quiz_mode==1)
     $sql = " and nextdate<=date(now())";
 
+//if there are more than 10 in ctr==0 then don't decriment anyone more than difference>10
+$r = doqueryi("select count(*) from stats where countdown=0");
+if($rs = $r->fetch_array())
+{
+    if($rs[0] > 25) //changed from 10 on 201104090857:vikas
+    {
+        //TODO, check this step
+        //this should reduce the load on CTR==0
+        $sql .= " and difference<=25";
+    }
+    else
+    {   //update everyone that should be
+
+    }
+}
+
 doqueryi("update stats set countdown=countdown-1 where countdown>0 $sql");
-
-
+#201104031340:vikas:created field QT for storing Question Type also in the stats record
 doqueryi($sql = "update stats  set 
                 dated=now()
                 ,shown=shown+1
@@ -181,6 +221,7 @@ doqueryi($sql = "update stats  set
                 ,difference={$word->difference}
                 ,countdown=countdown+{$word->difference}
                 ,wrong=wrong+$wrongs
+                ,qt=$qt
                 
          where kanji_id=$qid");
 

@@ -1,4 +1,28 @@
 <?php
+
+/*
+ * SELECT difference, count( * )
+FROM `stats`
+WHERE date( now( ) ) = date( dated )
+GROUP BY difference
+WITH rollup
+LIMIT 0 , 30
+ */
+
+
+/*
+ * SELECT chapter
+,count(v.id) as `total-words`
+,count(s.kanji_id) as `seen`
+,100*(count(v.id) - count(s.kanji_id))/count(v.id) as `%-left-to-see`
+
+FROM `vocab` v
+left join stats s on s.kanji_id=v.id
+where chapter between 1 and 10
+group by chapter
+with rollup;
+#todo, many times same work is shown twice
+ */
 require_once("db.php");
 global $debugprinting;
 $debugprinting=1;
@@ -14,14 +38,23 @@ $cls = "";
 
 $todaystring = date("Y-m-d",time());
 
+//if quiz mode if daily and there are no more words left
+//we can change mode to non-daily if the user has time
 $stats = clsWord::getStatistics();
+if( !($stats['newleft']>0) && $quiz_mode==1)
+{
+    //debugprint("no more for today, change quiz mode");
+    //$quiz_mode = 2;
+    //$stats = clsWord::getStatistics();
+}
 
 $oldid = 0;
 if(isset($_REQUEST['oldid']))
     $oldid = $_REQUEST['oldid'];
 
+
 $word = clsWord::getNextWord($stats['newleft']>0,$oldid);
-echo "<!-- corrent word id: {$word->id} -->";
+echo "<!-- currect word id: {$word->id} -->";
 #$word = new clsWord();
 #$word->load(328);
 
@@ -31,8 +64,8 @@ if(!$word)
 #load lowest id kanji
 #$r = $myi->query("select * from vocab where id not in (select kanji_id from score) limit 0,1");
 #$rs = $r->fetch_array();
-echo "<!-- ";
 if($debugprinting)
+echo "<!-- ";
     print_r($word);
 echo "-->";
 
@@ -50,25 +83,44 @@ echo "-->";
 
 $qt=1;
 
+$caption = "Meaning";
+
 if($word->correct>5 && ($word->grade=='A' || $word->grade=='B'))
 {
     debugprint("QT2");
     $qt++; // 2
 }
 
-if($word->shown>10)
+#three cases
+#1. Word is easy and its stright win most times; grade is A or B and times>10
+#2. the word is hard, took time to learn; grade A or B and times> 25
+
+
+#TODO: buggy, shows even when correct are less then right
+#just shown counter is not enough for this mode.
+if(
+            ($word->shown>10 && ($word->grade=='A' || $word->grade=='B')) ||
+            ($word->shown>25 && ($word->grade=='A' || $word->grade=='B'))
+   )
 {
     debugprint("QT3");
     $qt++; // 3
 }
-
-if($word->shown>15)
+#TODO: buggy, shows even when correct are less then right
+#just shown counter is not enough for this mode.
+if(
+            ($word->shown>15 && ($word->grade=='A' || $word->grade=='B')) ||
+            ($word->shown>30 && ($word->grade=='A' || $word->grade=='B'))
+   )
 {
     debugprint("QT4");
     $qt++;// 4
 }
 
-if($word->shown>20)
+if(
+            ($word->shown>20 && ($word->grade=='A' || $word->grade=='B')) ||
+            ($word->shown>35 && ($word->grade=='A' || $word->grade=='B'))
+   )
 {
     debugprint("QT5");
     $qt++; // 5
@@ -76,29 +128,51 @@ if($word->shown>20)
 
 echo "<!-- corrent word QT: {$qt} -->";
 
+//debugprint("switch($qt)");
 switch($qt)
 {
     case 1: //with hinting
         {
+            $caption = "Choose in english";
             $means = clsWord::getRandomWords($word);
-            $question = $word->word . " ({$word->kanji})";;
+            $question = $word->word . " (<span class=\"kanji\">{$word->kanji}</span>)";;
             echo "<!-- case1 -->";
             break;
         }
     case 2: //no hinting
         {
             //nothing
+            $caption = "Write in english";
             echo "<!-- case2 -->";
             $question = $word->word . " ({$word->kanji})";
             break;
         }
-    case $qt>2: //no options, a textbox to answer in english
+    case 3: 
         {
+            //english word with japanese meanings
+            $caption = "Choose in japanese";
             $means = clsWord::getRandomWords($word,0);
             echo "<!-- case3 -->";
             $question = $word->means;
             break;
         }
+    case 4:
+    case 5:
+        {
+            //nothing
+            $caption = "Write in japanese";
+            echo "<!-- case4 -->";
+            $question = $word->means;
+            break;
+        }
+    /*/*case 4: //no options, a textbox to answer in english
+        {
+            #TODO: need QT 4
+        }
+    case 5: //no options, a textbox to answer in english
+    {
+        #TODO: need QT 5
+    }*/
 
 }
 
@@ -119,7 +193,7 @@ echo $question
 </p>
 <p class="m">
 <label for="focusme">
-Meaning
+<?=$caption?>
 </label>
 <?
 if(0)
@@ -141,13 +215,13 @@ print_r($means);
 -->
 
 <?php
-if($qt==1 || $qt>2)
+if($qt==1 || $qt==3)
 {
     $ri = rand(1,5);
     for($i=0; $i<5; $i++)
     {
         ?>
-        <!-- $ri=<?=$ri?> -->
+        <!-- $ri=<?=$ri?>; <?=$qt?> -->
         <input type="radio" id="r<?=$i?>" name="ans" value="<?=$means[$ri % 5]?>"/>
         <label for="r<?=$i?>"><?=$i?>: <?=$means[$ri % 5]?></label><br/>
         <?    
@@ -159,7 +233,7 @@ if($qt==1 || $qt>2)
 }
 ?>
 <input type="hidden" name="qt" value="<?=$qt?>"/>
-<? if($qt==2) { ?><input autocomplete="off" id="focusme" type="text" name="meanslike"/> <? } ?>
+<? if($qt==2 || $qt >= 4) { ?><input class="qt<?=$qt?>" autocomplete="off" id="focusme" type="text" name="meanslike"/> <? } ?>
 <p>
 <input type="submit"/>
 </p>
